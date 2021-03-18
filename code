@@ -1,0 +1,106 @@
+couple topmodel
+ import TankPI
+ import LiquidSourse
+part:
+    TankPI tpi;
+    LiquidSource ls;
+connection:
+    connect(ls.qOut,tpi.qIn);
+end ;
+
+couple TankPI
+import PIcontinuousController
+import Tank
+part:
+    PIcontinuousController piContinuous;
+    Tank tank;
+port:
+    event_input Real qIn;
+equation:
+    connect (TankPI.qIn,tank.qIn);
+    connect (tank.tActuator, piContinuous.cOut};
+connect (tank.tSensor, piContinuous.cIn);
+end;
+
+continuous Tank
+parameter:
+real area = 0.5;
+    real flowGain= 0.05;
+    real minV=0, maxV=10;
+value:
+    real h = 0;
+    real qin;
+port：
+    event input real qIn;
+    event input real tActuator;
+event output real tSensor; 
+        event output real qOut;
+ equation:
+    when receive(qIn) then
+        qin = qIn;
+    end receive;
+    der(h) = (qin-qOut)/area;
+    qOut=LimitValue(minV,maxV,-flowGain*tActuator);
+    tSensor = h;
+end；
+
+discrete LiquidSource
+	parameter real flowLevel = 0.02;
+port:
+    event output real qOut;
+state:
+    initial state init
+        when entry then
+           statehold(0);
+        end;
+        
+when timeover() then
+			transition(pass);
+        out
+            send(qOut,flowLevel);
+        end ;
+    end ;
+	state pass
+        when entry then
+           statehold(150);
+        end;
+		 
+		when timeover() then
+			transition(idle);
+		out
+            send(qOut,3*flowLevel);
+        end ;
+    end;
+	
+	state idle
+         when entry then
+            statehold(infinity);
+         end;
+    end;
+end;  
+
+agent PIcontinuousController
+	plan plan1
+    value:
+        real cin;
+        real cout;
+    action:
+        cin = receive(false);
+        x = x + e*error/T ;
+        cout = K*(error + x);
+        error = ref - cin;
+        msg = message{cout};
+        send(msg);
+    end;
+parameter：
+    real Ts=0.1;
+    real K=2;
+    real T=10;
+    real ref;
+value:
+    real x;
+    real error = 0;
+    real outCtr; 
+action:
+    run(plan1);
+end;
